@@ -61,6 +61,9 @@ A walk is the journey in the design, taken the way a person takes it.
 
 - `pnpm typecheck` and `pnpm test`.
 - Run: there is nothing to start. `isocan rc` starts `src/adapter.ts` per turn,
-  once `~/.isocan/config.json` declares it:
-  `{"acpAdapters": {"isocannery": ["node", "<this checkout>/src/adapter.ts"]}}`,
-  and an agent is enrolled with `isocan rc add <name> --harness isocannery`.
+  once `node scripts/declare-adapter.mjs` has declared it in
+  `~/.isocan/config.json` and an agent is enrolled with
+  `isocan rc add <name> --harness isocannery`.
+- Walks run in a codespace (`.devcontainer`), so every install is from
+  nothing and the teardown is one delete. Creating one costs money: the
+  owner's word, each time.

@@ -1,0 +1,10 @@
+{
+  "name": "isocannery",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "secrets": {
+    "GEMINI_API_KEY": {
+      "description": "An AI Studio key with billing on. Reaches the adapter through the rc, which passes GEMINI_* and nothing else of yours."
+    }
+  }
+}
