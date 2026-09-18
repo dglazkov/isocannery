@@ -10,7 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^1.4.0"
+    "@agentclientprotocol/sdk": "^1.4.0",
+    "@google/genai": "^2.23.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
