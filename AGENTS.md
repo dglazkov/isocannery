@@ -59,5 +59,8 @@ A walk is the journey in the design, taken the way a person takes it.
 
 ## Commands
 
-None yet. The first work is the spike in the design; the build, test and run
-lines go here in the commit that creates them.
+- `pnpm typecheck` and `pnpm test`.
+- Run: there is nothing to start. `isocan rc` starts `src/adapter.ts` per turn,
+  once `~/.isocan/config.json` declares it:
+  `{"acpAdapters": {"isocannery": ["node", "<this checkout>/src/adapter.ts"]}}`,
+  and an agent is enrolled with `isocan rc add <name> --harness isocannery`.

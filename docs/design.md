@@ -64,30 +64,34 @@ Stated limits that touch this design: no `computer_use`, no binary file reading,
 
 ## Architecture
 
-The project writes one part, the bridge, and rents the rest. The bridge receives each summons, turns it into one interaction, and speaks on the thread only when the agent cannot.
+The project writes one part, the bridge, and rents the rest. Since 18 Sep 2026 the bridge is an adapter for `isocan rc`, not a service of its own. The rc is isocan's long-running command that answers for a canvas's enrolled agents: it hears the summons, puts her face on the thread, queues a second mention behind a running turn, keeps her session id, and says a failure on the thread in the system voice. It speaks [Agent Client Protocol](https://agentclientprotocol.com) over stdio to any command declared under `acpAdapters` in `~/.isocan/config.json`. The bridge is that command: it turns the rc's `session/new`, `session/load`, `session/prompt` and `session/cancel` into interactions, and streams the steps back as `session/update` so her face says what she is doing.
 
 ```mermaid
 sequenceDiagram
     actor P as Person
     participant C as isocan canvas
-    participant B as Bridge
+    participant B as Bridge (ACP adapter)
     participant G as Gemini Interactions API
     participant S as Sandbox
+    participant R as isocan rc
     P->>C: @mention on a thread
-    C->>B: summons
-    B->>C: "waking" line, as the agent
+    C->>R: summons
+    R->>C: her face on the thread: "reading your comment…"
+    R->>B: session/load, session/prompt (ACP on stdio)
     B->>G: interaction: summons + env + previous id
     G->>S: shell and file tools
     S->>C: isocan add, isocan comment reply
     G-->>B: steps, then completed or failed
-    B->>C: on failure only, one sentence why
+    B-->>R: session/update per step, then the stop reason
+    R->>C: on failure only, one sentence why
 ```
 
 The reply travels from the sandbox to the canvas directly, through the `isocan` CLI. The bridge never relays the agent's work, so it holds no files and runs no loop.
 
 | Part | Owned by | What it is |
 | --- | --- | --- |
-| Bridge | this project, hosted once by its owner on Google Cloud | A small service for everyone's agents: receive summonses, start and continue interactions, keep one record per agent, report failures on the thread. A few hundred lines. |
+| rc | isocan | The summons, her face, the queue behind a running turn, her session id, the failure sentence. On the owner's laptop first; hosted once for everyone later, and how is open. |
+| Bridge | this project | An ACP agent on stdio, started by the rc once per turn: start and continue interactions, keep the ids a session continues from, stream the steps. A few hundred lines. |
 | Agent definition | this project, hosted by Google | One managed agent per release of the project: the base agent, a system instruction, the tool list. There is no versioning, so the release is in its id. |
 | Environment | Google | One per agent on a canvas. Born with the brief and the isocan skill mounted as sources, and `isocan` installed once. |
 | Conversation | Google | The chain of interactions, continued by `previous_interaction_id`. |
@@ -103,11 +107,12 @@ Node and TypeScript, as before, on Google Cloud, with as few services as the bri
 | --- | --- | --- |
 | Language and tools | Node 22, TypeScript in strict mode, ES modules, pnpm, vitest | One package until a second one earns its place. |
 | Gemini | The Gemini API with an AI Studio key, through the `@google/genai` SDK if it covers agents and interactions, plain `fetch` on `/v1beta` if not | Not the Google Cloud twin, the Managed Agents API on Agent Platform. It is pre-GA, needs IAM per caller, and has the network off by default. |
-| Where the bridge runs | Cloud Run, one service in one region | Scales to zero only if summonses arrive as requests. See the open decision on delivery. |
-| The record per agent | Firestore, one document per agent, under its owner's id | No other database. |
+| Where the bridge runs | Beside an `isocan rc`, as its adapter: the owner's laptop first | Hosting one rc for everyone is the open decision on delivery; Cloud Run and the lines below wait for it. |
+| The wire to the rc | `@agentclientprotocol/sdk`, the agent side, newline-delimited JSON-RPC on stdio | The rc starts one adapter per turn, so nothing a later turn needs is held in memory. |
+| The record per agent | On the laptop, one JSON file per session under `~/.isocannery`, holding ids only. Hosted: Firestore, one document per agent, under its owner's id | No other database. |
 | Keys | Secret Manager, one secret per person's Gemini key | Read by the bridge's service account alone. Never in a log line, a prompt or a document. |
-| A mention during a running turn, and retries | Cloud Tasks | One queue, one task per waiting summons. |
-| Inbound | Two endpoints: a summons from isocan, an event from Gemini | Gemini's webhooks follow the Standard Webhooks spec; verify the signature. |
+| A mention during a running turn, and retries | The rc | It holds the pending summonses and dispatches them after the turn. |
+| Inbound | None: the rc starts the adapter, and the adapter streams the interaction | Gemini's webhooks are not needed while a turn is a live process. |
 | The brief and the isocan skill | A directory in the repository, mounted as sources when an environment is born | Changing how she works is a commit, not a deploy. |
 | Logs | Cloud Logging, structured, one timeline line per turn | The timeline is the product's main measurement. |
 | Deploy | `gcloud run deploy --source .` from a checkout | CI with Workload Identity Federation once there is something to protect. |
@@ -115,7 +120,7 @@ Node and TypeScript, as before, on Google Cloud, with as few services as the bri
 
 ## State, identity and secrets
 
-The bridge keeps one small record per agent and nothing else. Every field is an id that someone else's service can resolve, so the bridge can lose its memory of a turn and recover from the record alone.
+The rc keeps her enrolment and one session id per agent. The bridge keeps one small record per session id and nothing else. Every field is an id that someone else's service can resolve, so the bridge can lose its memory of a turn and recover from the record alone.
 
 | Field | Meaning |
 | --- | --- |
@@ -124,9 +129,11 @@ The bridge keeps one small record per agent and nothing else. Every field is an 
 | environment id | Her sandbox. A 404 means it expired: make a new one and carry on. |
 | last interaction id | Where her conversation continues from. |
 | open interaction id | The turn in flight, if any. A second mention while it runs queues behind it, because chaining onto a running interaction is refused. |
-| credential id | Her isocan badge, as Google's Credentials API holds it. |
+| credential id | Her isocan badge, as Google's Credentials API holds it. Minted by `isocan pass --agent <name>`, which exists for exactly this: whoever redeems it answers for that agent. |
 
 Identity is one rule, learned the hard way: every person and every agent is named with an id, and the bridge refuses aloud what it will not do. It says whose agent it is about to create before it creates her. It refuses, in a sentence, to serve a canvas its person does not own.
+
+The rc names a local agent by injecting `ISOCAN_SESSION_ID` into the adapter's environment, for a CLI that talks to the daemon on the same machine. That reaches the bridge and stops there: the hosted sandbox has no daemon and no machine secret, so inside it she is herself only through a badge, with the CLI speaking to the home under `isocan direct`. Spike question 5 is whether that works.
 
 Her isocan badge never enters the sandbox. The bridge redeems her pass once, registers the badge as a write-only credential trusted for isocan's domain, and the sandbox sees only a placeholder that Google's egress proxy swaps on the way out. The predecessor put the credential in the setup environment, and that one choice is what disabled its install cache.
 
@@ -146,7 +153,7 @@ A cold first reply has about 50 s to spend, and the person hears something withi
 
 Five rules hold the budget:
 
-1. The bridge speaks first. The waking line needs no model and no sandbox, so silence is never the first thing a person sees.
+1. The rc speaks first. Her face lands on the thread saying "reading your comment…" before the adapter is started, with no model and no sandbox, so silence is never the first thing a person sees.
 2. The brief carries the commands. Her identity, the canvas, and the five `isocan` commands she needs with their exact flags are in the mounted brief. On 18 Sep the agent spent seven tool calls finding these out and still missed a flag.
 3. The summons carries the ask. The thread id, the comment and its coordinates arrive in the input, so she never lists comments to read what she was just told.
 4. Time is read off the person's clock. The bridge prints one timeline per turn: mention, interaction started, first tool, reply on the canvas, done.
@@ -154,18 +161,19 @@ Five rules hold the budget:
 
 ## Open decisions
 
-One choice is made and five are open. Each open one has a recommendation to argue with.
+Two choices are made and five are open. Each open one has a recommendation to argue with.
 
 | Decision | Options | Recommendation |
 | --- | --- | --- |
 | Where the bridge lives | Decided 18 Sep 2026: one bridge, hosted by the project's owner on Google Cloud, for everyone. | A friend deploys nothing. The cost is that the owner holds other people's keys and pays for the bridge, so tenancy and secrets are in the design from the first commit. |
-| How a summons reaches the bridge | isocan calls a webhook on the bridge for each summons. Or the bridge stands by on every canvas, which needs one instance always on. | The webhook, leaning yes and not yet decided. It lets the bridge scale to zero and hold no connections. It is a change in isocan, which the owner also owns. Until it exists, one always-on instance standing by is the fallback. |
+| How a summons reaches the bridge | Decided 18 Sep 2026: through `isocan rc`, which starts the bridge as an ACP adapter. No `isocan wait` loop and no webhook of the bridge's own. | It needed no change in isocan: `acpAdapters` already takes any command. |
+| Where the rc runs for everyone | The owner's laptop for now. Hosted: an rc that is always on, or one that isocan starts per summons. | Open, and not needed for the first reply. The journey's steps 1 and 2 wait on it. |
 | Whose key pays | Each person brings a Gemini key. Or the owner's key pays for a first few turns. | Each person's own key to begin with. It keeps cost and abuse out of the first version. |
 | How she reaches isocan | The `isocan` CLI in the sandbox. Or isocan operations as client-side function tools that the bridge executes. | The CLI. It keeps isocan's own agent protocol and sends her files straight from the sandbox. Function tools cost a round trip through the bridge per call and make her emit each file as an argument. Revisit if the credential swap does not fit the CLI's auth. |
 | How she sees her work | Headless Chrome installed in the sandbox. A screenshot tool offered by the bridge or a remote MCP server. No looks in the first version. | No looks in the first version, and settle it in the spike. Chrome in the sandbox is undocumented, and the docs conflict on whether she can read an image file she made. |
 | Which model | Gemini 3.8 Flash is the default, and no Pro model is offered. | Take the default and judge the work, not the name. Put the same request to it that Claude Sonnet 5 answered on 18 Sep and compare the two cards side by side. |
 
-One hedge costs little: keep everything that names Gemini behind a single module with three verbs, start, continue and cancel. Anthropic's Claude Managed Agents has the same shape, a session, an environment and an event stream, and would be the second provider if the preview turns.
+One hedge costs little: keep everything that names Gemini behind a single module with three verbs, start, continue and cancel (`src/provider.ts`). Anthropic's Claude Managed Agents has the same shape, a session, an environment and an event stream, and would be the second provider if the preview turns.
 
 ## Spike first
 
