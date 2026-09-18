@@ -12,7 +12,7 @@ const adapter = path.join(import.meta.dirname, "../src/adapter.ts");
 async function withAdapter<T>(home: string, body: (ctx: acp.ClientContext) => Promise<T>, heard: string[] = []): Promise<T> {
   const child = spawn(process.execPath, [adapter], {
     stdio: ["pipe", "pipe", "inherit"],
-    env: { ...process.env, ISOCANNERY_HOME: home },
+    env: { ...process.env, ISOCANNERY_HOME: home, ISOCANNERY_PROVIDER: "fake" },
   });
   const stream = acp.ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout));
   try {

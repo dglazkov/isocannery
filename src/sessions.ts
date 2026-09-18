@@ -30,3 +30,24 @@ export async function writeSession(sessionId: string, conversation: Conversation
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(conversation, null, 2));
 }
+
+/** What the bridge knows about an agent that the rc does not: where her
+ * badge went. Ids only; the badge itself is Google's to hold. */
+export interface AgentRecord {
+  /** The home her canvases live at, as an origin. */
+  home: string;
+  /** Her badge there, by id. */
+  badgeId: string;
+  /** The write-only credential at the provider that holds the badge. */
+  credential: string;
+}
+
+export async function readAgent(actorId: string): Promise<AgentRecord | null> {
+  if (!/^[A-Za-z0-9_-]+$/.test(actorId)) throw new Error(`not an actor id: ${actorId}`);
+  try {
+    return JSON.parse(await fs.readFile(path.join(dir(), "agents", `${actorId}.json`), "utf8")) as AgentRecord;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+}

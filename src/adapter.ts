@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
 import { fake } from "./fake.ts";
+import { gemini } from "./gemini.ts";
 import type { Provider } from "./provider.ts";
 import { readSession, writeSession } from "./sessions.ts";
 
@@ -20,7 +21,8 @@ import { readSession, writeSession } from "./sessions.ts";
  * next turn needs: `sessions.ts` keeps the ids.
  */
 
-const provider: Provider = fake;
+/** `ISOCANNERY_PROVIDER=fake` proves the wire with no model and no key. */
+const provider: Provider = process.env["ISOCANNERY_PROVIDER"] === "fake" ? fake : gemini();
 
 /** The turn in flight per session, so `session/cancel` has something to end. */
 const running = new Map<string, AbortController>();
