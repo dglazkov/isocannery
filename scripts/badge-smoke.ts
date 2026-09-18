@@ -14,7 +14,7 @@ if (!credential || !home || !canvas || !thread) {
 
 const script = `
 set +e
-step() { echo; echo "### $1"; shift; /usr/bin/time -f "### took %es, exit %x" "$@" 2>&1; }
+step() { echo; echo "### $1"; shift; local t0=$(date +%s%N); "$@" 2>&1 | cut -c1-300 | tail -15; echo "### exit \${PIPESTATUS[0]}, took $(( ($(date +%s%N) - t0) / 1000000 )) ms"; }
 step install npm install -g --no-fund --no-audit github:dglazkov/isocan#release
 step version isocan --version
 step direct isocan direct ${home}
