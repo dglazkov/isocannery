@@ -200,6 +200,13 @@ What a back-door smoke measured on 18 Sep 2026 (`scripts/smoke.ts`, from a codes
 - Question 4, from the docs: an environment has no setup hook. Sources are mounted at birth, but a command runs only inside an interaction, so `isocan` is installed by the first turn, or arrives as a mounted source.
 - `@google/genai` 2.23 covers agents, interactions, environments and credentials. `interactions.cancel` applies to background interactions only; a streamed turn is cancelled by aborting its request.
 
+Question 5 passed on 18 Sep 2026, by the same back door (`scripts/sandbox-run.ts scripts/probes/isocan.sh`): from a fresh sandbox `isocan whoami` named the agent, `comment reply` and `add` landed on the canvas as her, and the sandbox held her public ids and a placeholder, no secret. What it took:
+
+- Her badge comes from `isocan pass --agent <name>`, redeemed into a scratch isocan home with `isocan setup --direct`, and handed to Google as a `bearer_token` credential; the scratch home is then deleted. The environment's `network.allowlist` names the home's domain with that credential, and the proxy sets `Authorization` on every request there, overwriting whatever the sandbox sent.
+- The sandbox's only way out is an HTTP proxy named in its environment, and Node's `fetch` ignores it: the CLI found nothing answering until `NODE_USE_ENV_PROXY=1` was set. Every shell she opens needs it.
+- The CLI refuses locally without an identity, so `~/.isocan/identity.json` is written with her id, her name, her badge id and a placeholder secret. It can be mounted as an inline source.
+- The costs: `npm install -g github:dglazkov/isocan#release` took 35 s, against a 15 s budget, once per environment. Each `isocan` command took 2 to 4 s, `--version` included, so it is the CLI starting up and not the network (a `fetch` of the same home took 1 s, `curl` 0.2 s). Question 6's pass line of 2 s is missed by that much.
+
 Questions 1, 2, 5 and 6 decide whether this project exists. One more belongs to the bridge and waits until it is deployed: a Cloud Run cold start must fit inside the 5 s before the waking line. If any of them fails, run the same script against Claude Managed Agents before giving up on the shape.
 
 The spike is walked the way a person would: a real canvas, a real mention typed in a browser, the reply read off the page. A run that reaches the agent by a back door measures the machine and not the afternoon, and does not count.
