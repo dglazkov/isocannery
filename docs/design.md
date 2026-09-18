@@ -192,6 +192,14 @@ Nothing above is proven, so the project starts with one throwaway script and an 
 | 9 | What does a mention during a running turn do, and how long may one interaction run? | a queued second turn answers; the limit is written down |
 | 10 | What does the turn cost in tokens? | the number is written down |
 
+What a back-door smoke measured on 18 Sep 2026 (`scripts/smoke.ts`, from a codespace, the stock `antigravity-preview-09-2026` agent, two streamed interactions in one fresh environment). It measures the machine and walks nothing:
+
+- A new environment and the first event took 6.1 s; the whole first turn, one shell call and a reply, 11.7 s. The second turn in the same environment was created in 1.1 s and ran two shell calls in 9.5 s.
+- Question 6, the shell: `curl` to dev.isocan.io in 0.2 to 0.65 s, `npm --version` in 0.3 to 1.0 s, and 1.3 to 4.6 s from a shell call to its result. Node there is 22.23.2. The network reaches dev.isocan.io with no allowlist.
+- Question 10, roughly: every model call carries about 6k input tokens of the agent's own before any brief; the first turn used 12k tokens in all and the second 20k, most of the repeat cached.
+- Question 4, from the docs: an environment has no setup hook. Sources are mounted at birth, but a command runs only inside an interaction, so `isocan` is installed by the first turn, or arrives as a mounted source.
+- `@google/genai` 2.23 covers agents, interactions, environments and credentials. `interactions.cancel` applies to background interactions only; a streamed turn is cancelled by aborting its request.
+
 Questions 1, 2, 5 and 6 decide whether this project exists. One more belongs to the bridge and waits until it is deployed: a Cloud Run cold start must fit inside the 5 s before the waking line. If any of them fails, run the same script against Claude Managed Agents before giving up on the shape.
 
 The spike is walked the way a person would: a real canvas, a real mention typed in a browser, the reply read off the page. A run that reaches the agent by a back door measures the machine and not the afternoon, and does not count.
