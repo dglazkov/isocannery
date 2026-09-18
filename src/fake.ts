@@ -11,8 +11,10 @@ import type { Conversation, Provider, TurnRequest } from "./provider.ts";
  * lands.
  */
 export const fake: Provider = {
-  async start() {
-    return { turns: "0" };
+  async start(): Promise<Conversation> {
+    // No count here: a new session for a known actor carries her count on.
+    const actorId = process.env["ISOCANNERY_FAKE_ACTOR"];
+    return actorId ? { actorId } : {};
   },
 
   async continue(conversation: Conversation, turn: TurnRequest) {
@@ -28,6 +30,6 @@ export const fake: Provider = {
       });
     }
     turn.onStep({ kind: "text", text: words });
-    return { turns: String(turns) };
+    return { ...conversation, turns: String(turns) };
   },
 };

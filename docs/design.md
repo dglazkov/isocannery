@@ -120,7 +120,7 @@ Node and TypeScript, as before, on Google Cloud, with as few services as the bri
 
 ## State, identity and secrets
 
-The rc keeps her enrolment and one session id per agent. The bridge keeps one small record per session id and nothing else. Every field is an id that someone else's service can resolve, so the bridge can lose its memory of a turn and recover from the record alone.
+The rc keeps her enrolment and one session id per agent. The bridge keeps one small record per session id and nothing else, and the record is hers and not the handle's: the rc loses its session id when she is dismissed and added again, and the new session picks up the newest record with her actor id, so she keeps her sandbox and her conversation. On 18 Sep 2026 she did not, and the turn after a re-add took 146 s, ten shell calls and 185k tokens to find out what she had already known. Every field is an id that someone else's service can resolve, so the bridge can lose its memory of a turn and recover from the record alone.
 
 | Field | Meaning |
 | --- | --- |

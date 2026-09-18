@@ -5,7 +5,7 @@ import * as acp from "@agentclientprotocol/sdk";
 import { fake } from "./fake.ts";
 import { gemini } from "./gemini.ts";
 import type { Provider } from "./provider.ts";
-import { readSession, writeSession } from "./sessions.ts";
+import { latestConversationOf, readSession, writeSession } from "./sessions.ts";
 
 /**
  * **The bridge is an ACP agent.** `isocan rc` already answers for enrolled
@@ -44,7 +44,11 @@ acp
   }))
   .onRequest("session/new", async (ctx) => {
     const sessionId = newSessionId();
-    await writeSession(sessionId, { ...(await provider.start(ctx.params.cwd)), cwd: ctx.params.cwd });
+    const started = await provider.start(ctx.params.cwd);
+    // A new handle for an agent we already know: she keeps her sandbox and
+    // her conversation, and what `start` just learned wins over what was stored.
+    const before = started["actorId"] ? await latestConversationOf(started["actorId"]) : null;
+    await writeSession(sessionId, { ...before, ...started, cwd: ctx.params.cwd });
     return { sessionId };
   })
   .onRequest("session/load", async (ctx) => {

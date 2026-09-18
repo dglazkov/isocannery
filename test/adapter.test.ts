@@ -9,10 +9,15 @@ import { expect, test } from "vitest";
 const adapter = path.join(import.meta.dirname, "../src/adapter.ts");
 
 /** One adapter process, as the rc starts one per turn. */
-async function withAdapter<T>(home: string, body: (ctx: acp.ClientContext) => Promise<T>, heard: string[] = []): Promise<T> {
+async function withAdapter<T>(
+  home: string,
+  body: (ctx: acp.ClientContext) => Promise<T>,
+  heard: string[] = [],
+  env: Record<string, string> = {},
+): Promise<T> {
   const child = spawn(process.execPath, [adapter], {
     stdio: ["pipe", "pipe", "inherit"],
-    env: { ...process.env, ISOCANNERY_HOME: home, ISOCANNERY_PROVIDER: "fake" },
+    env: { ...process.env, ISOCANNERY_HOME: home, ISOCANNERY_PROVIDER: "fake", ...env },
   });
   const stream = acp.ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout));
   try {
@@ -59,4 +64,21 @@ test("an unknown session is refused, so the rc falls back to a new one", async (
       ctx.request(acp.methods.agent.session.load, { sessionId: "0".repeat(32), cwd: home, mcpServers: [] }),
     ).rejects.toThrow();
   });
+});
+
+test("a new session for an agent we know carries her conversation on", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "isocannery-"));
+  const heard: string[] = [];
+  const asHer = { ISOCANNERY_FAKE_ACTOR: "usr_her" };
+  const fresh = async (ctx: acp.ClientContext) => {
+    const session = await ctx.request(acp.methods.agent.session.new, { cwd: home, mcpServers: [] });
+    await say(ctx, session.sessionId);
+  };
+
+  await withAdapter(home, fresh, heard, asHer);
+  // Dismissed and added again: the rc has lost its handle and asks for a new one.
+  await withAdapter(home, fresh, heard, asHer);
+  await withAdapter(home, fresh, heard, { ISOCANNERY_FAKE_ACTOR: "usr_someone_else" });
+
+  expect(heard.map((words) => /turn (\d+)/.exec(words)?.[1])).toEqual(["1", "2", "1"]);
 });

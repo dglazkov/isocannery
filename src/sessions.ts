@@ -31,6 +31,29 @@ export async function writeSession(sessionId: string, conversation: Conversation
   await fs.writeFile(file, JSON.stringify(conversation, null, 2));
 }
 
+/**
+ * The newest conversation any session holds for this agent. The rc's session
+ * id is a handle it can lose (dismiss her and add her again, and it starts a
+ * new session), but her sandbox and her conversation are hers, not the
+ * handle's: a new session for the same actor carries on where she was.
+ */
+export async function latestConversationOf(actorId: string): Promise<Conversation | null> {
+  const sessions = path.join(dir(), "sessions");
+  const names = await fs.readdir(sessions).catch(() => [] as string[]);
+  let latest: { at: number; conversation: Conversation } | null = null;
+  for (const name of names) {
+    const file = path.join(sessions, name);
+    try {
+      const conversation = JSON.parse(await fs.readFile(file, "utf8")) as Conversation;
+      const at = (await fs.stat(file)).mtimeMs;
+      if (conversation["actorId"] === actorId && (!latest || at > latest.at)) latest = { at, conversation };
+    } catch {
+      // a file that is not a session is not hers
+    }
+  }
+  return latest?.conversation ?? null;
+}
+
 /** What the bridge knows about an agent that the rc does not: where her
  * badge went. Ids only; the badge itself is Google's to hold. */
 export interface AgentRecord {
