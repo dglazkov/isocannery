@@ -1,6 +1,9 @@
 {
   "name": "isocannery",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
   "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile",
   "secrets": {
     "GEMINI_API_KEY": {
