@@ -19,8 +19,10 @@ import { readAgent } from "./sessions.ts";
  *   credential, and the environment's allowlist has the egress proxy set it
  *   on every request to her home. The sandbox gets her public ids and a
  *   placeholder, because the CLI refuses locally without an identity.
- * - The stock agent reads `/.agents/AGENTS.md` by itself; there is no agent
- *   object to create or version.
+ * - The stock agent reads `/.agents/AGENTS.md` and `/.agents/skills/` by
+ *   itself; there is no agent object to create or version. The brief says
+ *   only what this sandbox adds. How to work on a canvas is isocan's to say
+ *   and to make fast, so its skill is mounted as isocan wrote it.
  * - `interactions.cancel` is for background interactions. A streamed turn is
  *   cancelled by aborting its request.
  */
@@ -49,16 +51,24 @@ const brief = (file: string): Promise<string> => readFile(path.join(import.meta.
 const fill = (template: string, values: Record<string, string>): string =>
   template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? `{{${key}}}`);
 
+/** isocan's own skill, as `isocan setup` left it in her directory on the rc's
+ * machine: the protocol is isocan's to say, in the words of the version in
+ * use. The runtime discovers it under `/.agents/skills/` by itself. */
+const skillIn = (cwd: string): Promise<string | null> =>
+  readFile(path.join(cwd, ".agents/skills/isocan-collab/SKILL.md"), "utf8").catch(() => null);
+
 /** A new sandbox for her: the brief, the network line, and who she is there. */
-async function newEnvironment(conversation: Conversation): Promise<Record<string, unknown>> {
+async function newEnvironment(conversation: Conversation, cwd: string): Promise<Record<string, unknown>> {
   const { home = "", badgeId = "", credential = "", actorId = "", name = "" } = conversation;
   const at = new Date().toISOString();
   const inline = (target: string, content: string) => ({ type: "inline", target, content });
+  const skill = await skillIn(cwd);
   return {
     type: "remote",
     sources: [
       inline("/.agents/AGENTS.md", fill(await brief("AGENTS.md"), { name, actorId, home })),
       inline("/.agents/env.sh", await brief("env.sh")),
+      ...(skill ? [inline("/.agents/skills/isocan-collab/SKILL.md", skill)] : []),
       inline("/root/.isocan/config.json", JSON.stringify({ direct: home })),
       inline(
         "/root/.isocan/identity.json",
@@ -116,7 +126,7 @@ export function geminiProvider(client: InteractionsClient): Provider {
       const born = async () => {
         // A wait is said aloud: a new sandbox installs `isocan` before anything else.
         turn.onStep({ kind: "tool", id: "sandbox", title: "setting up a new sandbox, about 40 s, this once" });
-        return open(await newEnvironment(conversation));
+        return open(await newEnvironment(conversation, turn.cwd));
       };
 
       let stream: AsyncIterable<InteractionEvent>;
