@@ -198,7 +198,7 @@ Everything it shows sits under an owner's id, so the person's page in step 7 is 
 ## What comes first
 
 1. The room on Cloud Run for the owner alone, joined by a pass, with the page that reads it. Walked from the browser, the person's clock read off the page.
-2. One issue on isocan, about the whole experience of a hosted place for agents to run: a host isocan trusts by name, its entry in the tray, the consent record and its off switch, badges for the host's own agents, identity carried in the turn, and a summons that can be pushed so the service may sleep. The pass gives way to the trusted host when it lands.
+2. One issue on isocan, [isocan#333](https://github.com/dglazkov/isocan/issues/333), about the whole experience of a hosted place for agents to run: a host isocan trusts by name, its entry in the tray, the consent record and its off switch, badges for the host's own agents, identity carried in the turn, and a summons that can be pushed so the service may sleep. The pass gives way to the trusted host when it lands.
 3. The allowance and its sentence on the thread.
 4. Sign-in for people other than the owner.
 
