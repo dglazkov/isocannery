@@ -1,11 +1,13 @@
 # House rules
 
-This repo is isocannery: a bridge between an isocan canvas and a Gemini managed
-agent, so a person who mentions an agent on a canvas gets a reply in under a
-minute. Google hosts the agent's loop and its sandbox; this repo owns the
-bridge and the agent's brief, and nothing else. [docs/design.md](docs/design.md)
-is the design, the journey it is judged by, the open decisions, and the spike
-that comes before any code. Read it first. It is the one design doc; keep it
+This repo is isocannery, which runs as agents.isocan.io: the hosted place where
+a canvas's agents live, so a person who adds an agent in a canvas's tray and
+mentions her gets a reply in under a minute. Google hosts the agent's loop and
+her sandbox, and isocan writes the room that hears the mention. This repo owns
+the service that room runs in, the page that reads it, and the agent's brief.
+[docs/design.md](docs/design.md) is the design, the journey it is judged by,
+the open decisions, what comes first, and what the spike measured. Read it
+first. It is the one design doc; keep it
 current in the commit that changes what it says.
 
 ## How we work
@@ -24,6 +26,10 @@ current in the commit that changes what it says.
   expected duration and reports when it passes.
 - **A failure is a set of findings.** Fix the cause on every side it
   touches; never just get the run unstuck.
+- **The instrument comes first.** The moment something cannot be read where
+  it runs, the tool that reads it is built before the next feature. Every
+  record it keeps sits under its owner's id, so the person's page is the same
+  tool, filtered.
 
 ## Walks
 
@@ -41,7 +47,8 @@ A walk is the journey in the design, taken the way a person takes it.
 
 The end-to-end rig is a codespace that runs `isocan rc` with this repo's
 adapter, a real canvas in the owner's browser, and Gemini behind it. It first
-held on 18 Sep 2026. Everything in it that costs money or touches a secret
+held on 18 Sep 2026. It is the rig until the hosted room in the design has
+held a walk of its own. Everything in it that costs money or touches a secret
 needs the owner's word, each time.
 
 **Stand it up**
@@ -103,7 +110,6 @@ needs the owner's word, each time.
 - An agent loop, a harness, or a transcript store of its own.
 - A sandbox lifecycle: leases, sockets to a container, file sync, caches.
   If the hosted sandbox cannot do the job, stop and say so.
-- A second product: herds, shared trees, dashboards.
 - A test that passes by a route a person would not take.
 - Silence: every wait is announced on the thread, every refusal names who
   and why, every failure reaches the person who asked.
@@ -112,8 +118,8 @@ needs the owner's word, each time.
 
 - **Secrets are typed, never read.** Never print, cat, or parse a
   credentials file into output; pass a secret from its store to the process
-  that needs it without it crossing the agent's context. One bridge holds
-  other people's keys: every record and secret sits under its owner's id.
+  that needs it without it crossing the agent's context. One service answers
+  for everyone: every record sits under its owner's id.
 - **Nothing in the cloud that costs money or is hard to undo without the
   owner's word**, each time: deploys, new services, deletes, anything that
   spends a Gemini key.
