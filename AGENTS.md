@@ -14,9 +14,6 @@ current in the commit that changes what it says.
 
 - **The owner decides, the agent writes.** Propose in a sentence, ask when a
   choice is theirs, do exactly that. No unattended runs of work.
-- **Work comes from chat and from open issues.** No project plans, phase
-  docs, findings logs or status lines. If a thing needs remembering, it is a
-  sentence in the design, an issue, or a commit message.
 - **Small commits, straight to main, verified narrowly.** Typecheck, the
   tests the change touches, a dry run where it is cheap. Watch CI on every
   push and fix red before anything else.
