@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Declare this checkout's adapter to `isocan rc`, as the harness "isocannery":
-// one key merged into ~/.isocan/config.json, everything else left as it was.
+// two keys merged into ~/.isocan/config.json, everything else left as it was.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -16,6 +16,9 @@ try {
   if (err.code !== "ENOENT") throw err;
 }
 config.acpAdapters = { ...config.acpAdapters, isocannery: ["node", adapter] };
+// The rc hands an adapter a short list of the person's environment; this
+// adds the adapter's own switches (ISOCANNERY_PROVIDER, ISOCANNERY_HOME).
+config.adapterEnv = [...new Set([...(config.adapterEnv ?? []), "ISOCANNERY_*"])];
 await mkdir(home, { recursive: true });
 await writeFile(file, `${JSON.stringify(config, null, 2)}\n`);
 console.log(`isocannery → node ${adapter}, declared in ${file}`);
